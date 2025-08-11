@@ -1,0 +1,9 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+// const userEmail = Astro.cookies.get("user_email")?.value;
+// const isLoggedIn = !!userEmail;
+---
+
+<BaseLayout title={Astro.props.title}>
+  <slot />
+</BaseLayout>

